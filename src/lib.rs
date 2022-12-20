@@ -10,7 +10,7 @@ impl Codec {
     {
         let k = self.0;
         let mut high = src.into() >> k;
-        if high + k + 3 > T::BITS_SIZE {
+        if high + k + 2 > T::BITS_SIZE + 1 {
             w.write_bit(false)?;
             w.write(T::BITS_SIZE, src)?;
         } else {
