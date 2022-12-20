@@ -1,8 +1,8 @@
-use librice::{*, bitstream_io::*};
+use rice::{bitstream_io::*, *};
 
 fn main() {
-    use std::io::Cursor;
     use rand::*;
+    use std::io::Cursor;
 
     let mut rng = rand::thread_rng();
 

@@ -77,8 +77,8 @@ fn test_roundtrip() {
 
 #[test]
 fn test_random() {
-    use std::io::Cursor;
     use rand::*;
+    use std::io::Cursor;
 
     let mut rng = rand::thread_rng();
     let msg: [u16; 32] = std::array::from_fn(|_| rng.gen());
