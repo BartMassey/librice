@@ -7,7 +7,8 @@ use easy_cast::*;
 pub struct Codec(pub u32);
 
 fn as_big<T>(value: T, target: u32) -> bool
-    where u32: Conv<T>
+where
+    u32: Conv<T>,
 {
     let downgrade: Result<u32> = value.try_cast();
     if let Ok(value) = downgrade {
@@ -28,7 +29,8 @@ fn test_as_big() {
 }
 
 fn mask<T: Numeric>(nbits: u32) -> T
-    where u32: Cast<T>
+where
+    u32: Cast<T>,
 {
     assert!(nbits <= T::BITS_SIZE);
     if nbits == T::BITS_SIZE {
