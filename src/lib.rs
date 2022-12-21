@@ -1,28 +1,79 @@
 pub use bitstream_io;
 use bitstream_io::*;
+use easy_cast::*;
 
 pub struct Codec(pub u32);
+
+fn as_big<T>(value: T, target: u32) -> bool
+    where u32: Conv<T>
+{
+    let downgrade: Result<u32> = value.try_cast();
+    if let Ok(value) = downgrade {
+        value >= target
+    } else {
+        true
+    }
+}
+
+#[test]
+fn test_as_big() {
+    assert!(as_big(0u8, 0));
+    assert!(!as_big(0u8, 1));
+    assert!(as_big(1u8, 0));
+    assert!(!as_big(1u32 << 31 - 1, 1u32 << 31));
+    assert!(as_big(1u32 << 31, 1u32 << 31));
+    assert!(as_big(1u64 << 63, 1u32 << 31));
+}
+
+fn mask<T: Numeric>(nbits: u32) -> T
+    where u32: Cast<T>
+{
+    assert!(nbits <= T::BITS_SIZE);
+    if nbits == T::BITS_SIZE {
+        return !(0.cast());
+    }
+    (T::ONE << nbits) - T::ONE
+}
+
+#[test]
+fn test_mask() {
+    assert_eq!(0, mask::<u32>(0));
+    assert_eq!(1, mask::<u32>(1));
+    assert_eq!(0b11, mask::<u32>(2));
+    assert_eq!(0b111, mask::<u32>(3));
+    assert_eq!(0xffffffff, mask::<u32>(32));
+}
 
 impl Codec {
     pub fn encode_word<T, W: BitWrite>(&self, src: T, w: &mut W) -> std::io::Result<()>
     where
-        T: Numeric + Into<u32>,
+        T: Numeric + std::ops::SubAssign + std::ops::Add<Output = T> + Cast<u32> + Conv<u32>,
+        u32: Conv<T>,
     {
         let k = self.0;
-        let mut high = src.into() >> k;
-        if high + k + 2 > T::BITS_SIZE + 1 {
+        let mut high = src >> k;
+        let compressable = !as_big(high + k.cast() + 2.cast(), T::BITS_SIZE + 1);
+        if compressable {
+            let step = 32;
+
+            w.write_bit(true)?;
+
+            while as_big(high, step) {
+                w.write::<T>(step, mask(step))?;
+                high -= step.cast();
+            }
+            let high: u32 = high.cast();
+            let high_mask: u32 = mask(high);
+            w.write(high, high_mask)?;
+
+            w.write_bit(false)?;
+
+            let low_mask: u32 = mask(k);
+            let low = src.cast();
+            w.write(k, low & low_mask)?;
+        } else {
             w.write_bit(false)?;
             w.write(T::BITS_SIZE, src)?;
-        } else {
-            w.write_bit(true)?;
-            while high > 32 {
-                w.write::<u32>(32, 0xffffffff)?;
-                high -= 32;
-            }
-            w.write::<u32>(high, (1 << high) - 1)?;
-            w.write_bit(false)?;
-            let rem = src.into() & ((1 << k) - 1);
-            w.write::<u32>(k, rem)?;
         }
         Ok(())
     }
@@ -55,7 +106,7 @@ fn test_roundtrip() {
 
     let codec = Codec(3);
     for i in 0u8..=255 {
-        let mut buf = [0u8; 4];
+        let mut buf = [0u8; 8];
 
         let c = Cursor::new(buf.as_mut());
         let mut b: BitWriter<_, BE> = BitWriter::new(c);
@@ -65,7 +116,7 @@ fn test_roundtrip() {
         let mut c = b.into_writer();
         c.set_position(0);
         if i < 8 {
-            assert_eq!(&[0b10000_000 + (i << 3), 0, 0, 0], c.get_ref());
+            assert_eq!(&[0b10000_000 + (i << 3), 0, 0, 0, 0, 0, 0, 0], c.get_ref());
         }
 
         let mut b: BitReader<_, BE> = BitReader::new(c);

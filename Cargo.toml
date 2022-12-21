@@ -6,5 +6,10 @@ edition = "2021"
 [dependencies]
 bitstream-io = "1.6.0"
 
+[dependencies.easy-cast]
+version = "0.5.1"
+features = ["always_assert"]
+path = "/local/src/old/easy-cast"
+
 [dev-dependencies]
 rand = "0.8.5"
