@@ -1,6 +1,6 @@
 [package]
 name = "rice"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [dependencies]
@@ -9,7 +9,7 @@ bitstream-io = "1.6.0"
 [dependencies.easy-cast]
 version = "0.5.1"
 features = ["always_assert"]
-path = "/local/src/old/easy-cast"
+git = "http://github.com/BartMassey-upstream/easy-cast"
 
 [dev-dependencies]
 rand = "0.8.5"
