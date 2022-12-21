@@ -1,3 +1,5 @@
+use std::ops::*;
+
 pub use bitstream_io;
 use bitstream_io::*;
 use easy_cast::*;
@@ -47,7 +49,7 @@ fn test_mask() {
 impl Codec {
     pub fn encode_word<T, W: BitWrite>(&self, src: T, w: &mut W) -> std::io::Result<()>
     where
-        T: Numeric + std::ops::SubAssign + std::ops::Add<Output = T> + Cast<u32> + Conv<u32>,
+        T: Numeric + SubAssign + Add<Output = T> + BitAnd<Output = T> + Conv<u32>,
         u32: Conv<T>,
     {
         let k = self.0;
@@ -62,15 +64,14 @@ impl Codec {
                 w.write::<T>(step, mask(step))?;
                 high -= step.cast();
             }
-            let high: u32 = high.cast();
+            let high = high.cast();
             let high_mask: u32 = mask(high);
             w.write(high, high_mask)?;
 
             w.write_bit(false)?;
 
-            let low_mask: u32 = mask(k);
-            let low = src.cast();
-            w.write(k, low & low_mask)?;
+            let low_mask: T = mask(k);
+            w.write(k, src & low_mask)?;
         } else {
             w.write_bit(false)?;
             w.write(T::BITS_SIZE, src)?;
