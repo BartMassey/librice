@@ -81,23 +81,21 @@ impl Codec {
 
     pub fn decode_word<T, R: BitRead>(&self, r: &mut R) -> std::io::Result<T>
     where
-        T: Numeric + Into<u32>,
-        u32: TryInto<T>,
-        <u32 as TryInto<T>>::Error: std::fmt::Debug,
+        T: Numeric + AddAssign + Conv<u32>,
     {
         let k = self.0;
-        let mut result = 0;
+        let mut result = 0u32.cast();
         if r.read_bit()? {
             while r.read_bit()? {
-                result += 1;
+                result += T::ONE;
             }
             result <<= k;
-            let rem = r.read::<u32>(k)?;
+            let rem = r.read(k)?;
             result |= rem;
         } else {
             result = r.read(T::BITS_SIZE)?;
         }
-        Ok(result.try_into().unwrap())
+        Ok(result)
     }
 }
 
