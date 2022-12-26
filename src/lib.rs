@@ -51,24 +51,19 @@ fn test_mask() {
 impl Codec {
     pub fn encode_word<T, W: BitWrite>(&self, src: T, w: &mut W) -> std::io::Result<()>
     where
-        T: Numeric + SubAssign + Add<Output = T> + BitAnd<Output = T> + Conv<u32>,
+        T: Numeric + Add<Output = T> + BitAnd<Output = T> + Conv<u32>,
+        Range<T>: Iterator,
         u32: Conv<T>,
     {
         let k = self.0;
-        let mut high = src >> k;
+        let high = src >> k;
         let compressable = !as_big(high + k.cast() + 2.cast(), T::BITS_SIZE + 1);
         if compressable {
-            let step = 32;
-
             w.write_bit(true)?;
 
-            while as_big(high, step) {
-                w.write::<T>(step, mask(step))?;
-                high -= step.cast();
+            for _ in 0u32.cast()..high {
+                w.write_bit(true)?;
             }
-            let high = high.cast();
-            let high_mask: u32 = mask(high);
-            w.write(high, high_mask)?;
 
             w.write_bit(false)?;
 
