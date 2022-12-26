@@ -1,11 +1,18 @@
+//! This crate is a quick, cheesy, half-finished
+//! implementation of a Golomb-Rice codec with bounded-width
+//! output.
+
 use std::ops::*;
 
 pub use bitstream_io;
 use bitstream_io::*;
 use easy_cast::*;
 
+/// Struct containing codec parameter for number of low bits.
 pub struct Codec(pub u32);
 
+/// Do a comparison of `value` with `target`, but answer yes
+/// if `value` is too big to compare with `u32`.
 fn as_big<T>(value: T, target: u32) -> bool
 where
     u32: Conv<T>,
@@ -28,6 +35,15 @@ fn test_as_big() {
     assert!(as_big(1u64 << 63, 1u32 << 31));
 }
 
+/// Compute a bitmask of type `T` with 1 bits
+/// in the low `nbits` bits.
+///
+/// The case of shifting off the end is handled as a special
+/// case, since there is currently no way to indicate an
+/// arbitrary type `T` supports the `wrapping_sub()` method
+/// in stable Rust (that is, there is no trait for
+/// this). Nightly has the `wrapping_sub()` function, but
+/// it's not clear how to use this here.
 fn mask<T: Numeric>(nbits: u32) -> T
 where
     u32: Cast<T>,
@@ -49,6 +65,8 @@ fn test_mask() {
 }
 
 impl Codec {
+    /// Encode the given word `src` of type `T` to the
+    /// output bitstream `w`.
     pub fn encode_word<T, W: BitWrite>(&self, src: T, w: &mut W) -> std::io::Result<()>
     where
         T: Numeric + Add<Output = T> + BitAnd<Output = T> + Conv<u32>,
@@ -76,6 +94,8 @@ impl Codec {
         Ok(())
     }
 
+    /// Decode the next word of type `T` from the input
+    /// bitstream `r`.
     pub fn decode_word<T, R: BitRead>(&self, r: &mut R) -> std::io::Result<T>
     where
         T: Numeric + AddAssign + Conv<u32>,
